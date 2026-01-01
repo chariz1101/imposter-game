@@ -1,16 +1,25 @@
-# React + Vite
+# 🕵️ Imposter Game
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern, neon-themed "pass and play" social deduction game built with React and Vite. Players must determine who among them is the "Imposter" while the Imposter tries to blend in without knowing the secret word.
 
-Currently, two official plugins are available:
+![Project Preview](//tbd)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🎮 How to Play
 
-## React Compiler
+1. **Setup:** Choose a category (e.g., Animals, Places) and the number of players.
+2. **Pass the Device:** The game will guide you to pass the device to each player securely.
+3. **Learn Your Role:**
+   - **Civilians:** You will see a secret word (e.g., "Pizza").
+   - **The Imposter:** You will see "YOU ARE THE IMPOSTER" and *won't* know the secret word.
+4. **Discuss & Vote:** Once everyone has seen their role, the timer starts. Ask questions to figure out who doesn't know the word!
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🚀 Getting Started
 
-## Expanding the ESLint configuration
+### Prerequisites
+You need [Node.js](https://nodejs.org/) installed on your computer.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone [https://github.com/YOUR_USERNAME/imposter-game.git](https://github.com/YOUR_USERNAME/imposter-game.git)
