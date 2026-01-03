@@ -2,8 +2,8 @@
 
 A modern, neon-themed "pass and play" social deduction game built with React and Vite. Players must determine who among them is the "Imposter" while the Imposter tries to blend in without knowing the secret word.
 
-## 🕹️ Play it here!
-[Website Link](https://imposter-game-cyan.vercel.app/)
+## 🕹️ [Play it here!](https://imposter-game-cyan.vercel.app/)
+![Preview](/public/preview.png)
 
 ## 🎮 How to Play
 
