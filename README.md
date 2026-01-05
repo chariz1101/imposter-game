@@ -17,7 +17,7 @@ A modern, neon-themed "pass and play" social deduction game built with React and
 ## 🚀 Getting Started
 
 ### Prerequisites
-You need [Node.js](https://nodejs.org/) installed on your computer.
+You need [Node.js](https://nodejs.org/) installed.
 
 ### Installation
 
