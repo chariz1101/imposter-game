@@ -14,13 +14,3 @@ A modern, neon-themed "pass and play" social deduction game built with React and
    - **The Imposter:** You will see "YOU ARE THE IMPOSTER" and *won't* know the secret word.
 4. **Discuss & Vote:** Once everyone has seen their role, the timer starts. Ask questions to figure out who doesn't know the word!
 
-## 🚀 Getting Started
-
-### Prerequisites
-You need [Node.js](https://nodejs.org/) installed.
-
-### Installation
-
-1. Clone the repository:
-   ```bash
-   git clone [https://github.com/YOUR_USERNAME/imposter-game.git](https://github.com/YOUR_USERNAME/imposter-game.git)
