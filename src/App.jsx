@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import Papa from 'papaparse';
-import { User, Users, Eye, EyeOff, RotateCcw, Shuffle } from 'lucide-react';
 
 export default function ImposterGame() {
   const [gameData, setGameData] = useState(null);
@@ -12,11 +11,12 @@ export default function ImposterGame() {
   const [imposterCount, setImposterCount] = useState(1);
 
   const [secretWord, setSecretWord] = useState('');
+  const [usedCategory, setUsedCategory] = useState('');
   const [roles, setRoles] = useState([]);
   const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
   const [showRole, setShowRole] = useState(false);
 
-  // Max imposters = floor(playerCount / 3), minimum 1
+  const RANDOM_KEY = '__RANDOM__';
   const maxImposters = Math.max(1, Math.floor(playerCount / 3));
 
   useEffect(() => {
@@ -35,41 +35,42 @@ export default function ImposterGame() {
               groupedData[cat].push(word);
             });
             setGameData(groupedData);
-            if (Object.keys(groupedData).length > 0) {
-              setCategory(Object.keys(groupedData)[0]);
-            }
+            setCategory(RANDOM_KEY);
             setLoading(false);
           }
         });
       });
   }, []);
 
-  // Keep imposterCount in valid range when playerCount changes
   useEffect(() => {
     const max = Math.max(1, Math.floor(playerCount / 3));
     if (imposterCount > max) setImposterCount(max);
   }, [playerCount]);
 
   const shuffleArray = (array) => {
-    let currentIndex = array.length, randomIndex;
+    let arr = [...array];
+    let currentIndex = arr.length, randomIndex;
     while (currentIndex !== 0) {
       randomIndex = Math.floor(Math.random() * currentIndex);
       currentIndex--;
-      [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+      [arr[currentIndex], arr[randomIndex]] = [arr[randomIndex], arr[currentIndex]];
     }
-    return array;
+    return arr;
   };
 
   const startGame = () => {
     if (!gameData) return;
-    const words = gameData[category];
+    const cats = Object.keys(gameData);
+    const resolvedCategory = category === RANDOM_KEY
+      ? cats[Math.floor(Math.random() * cats.length)]
+      : category;
+    const words = gameData[resolvedCategory];
     const word = words[Math.floor(Math.random() * words.length)];
     setSecretWord(word);
-
+    setUsedCategory(resolvedCategory);
     let newRoles = Array(playerCount - imposterCount).fill(word);
     for (let i = 0; i < imposterCount; i++) newRoles.push('IMPOSTER');
     newRoles = shuffleArray(newRoles);
-
     setRoles(newRoles);
     setCurrentPlayerIndex(0);
     setShowRole(false);
@@ -88,6 +89,7 @@ export default function ImposterGame() {
   const resetGame = () => {
     setPhase('setup');
     setSecretWord('');
+    setUsedCategory('');
     setRoles([]);
   };
 
@@ -112,43 +114,44 @@ export default function ImposterGame() {
     </div>
   );
 
-  const CounterRow = ({ label, value, onDecrement, onIncrement, min, max, sublabel }) => (
+  const CounterRow = ({ sublabel, value, onDecrement, onIncrement }) => (
     <div className="flex items-center justify-between bg-slate-950/50 rounded-2xl p-2 border border-slate-800">
-      <button
-        onClick={onDecrement}
-        className="w-12 h-12 flex items-center justify-center bg-slate-800 rounded-xl hover:bg-slate-700 text-slate-200 transition-colors"
-      >
+      <button onClick={onDecrement} className="w-12 h-12 flex items-center justify-center bg-slate-800 rounded-xl hover:bg-slate-700 text-slate-200 transition-colors">
         <span className="text-2xl font-bold mb-1">-</span>
       </button>
       <div className="flex flex-col items-center">
         <span className="text-3xl font-black text-white">{value}</span>
         <span className="text-[10px] text-slate-500 uppercase font-bold">{sublabel}</span>
       </div>
-      <button
-        onClick={onIncrement}
-        className="w-12 h-12 flex items-center justify-center bg-slate-800 rounded-xl hover:bg-slate-700 text-slate-200 transition-colors"
-      >
+      <button onClick={onIncrement} className="w-12 h-12 flex items-center justify-center bg-slate-800 rounded-xl hover:bg-slate-700 text-slate-200 transition-colors">
         <span className="text-2xl font-bold mb-1">+</span>
       </button>
     </div>
   );
 
-  // 1. SETUP SCREEN
   if (phase === 'setup') {
+    const cats = Object.keys(gameData);
     return (
       <Container>
         <div className="text-center mb-8">
-          <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 tracking-tighter">
-            IMPOSTER
-          </h1>
+          <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 tracking-tighter">IMPOSTER</h1>
           <p className="text-slate-400 text-sm mt-2 font-medium tracking-widest uppercase">Identify the liar</p>
         </div>
 
-        {/* Category Selector */}
         <div className="mb-6">
           <label className="text-xs font-bold text-slate-500 uppercase mb-3 block tracking-wider">Select Category</label>
-          <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto custom-scrollbar pr-2">
-            {Object.keys(gameData).map((cat) => (
+          <div className="grid grid-cols-2 gap-3 max-h-52 overflow-y-auto pr-1">
+            <button
+              onClick={() => setCategory(RANDOM_KEY)}
+              className={`col-span-2 p-3 rounded-xl text-sm font-bold transition-all duration-200 border flex items-center justify-center gap-2 ${
+                category === RANDOM_KEY
+                  ? 'bg-purple-600/20 border-purple-500 text-purple-300 shadow-[0_0_15px_rgba(139,92,246,0.3)]'
+                  : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-800 hover:border-slate-600'
+              }`}
+            >
+              🎲 Random Category
+            </button>
+            {cats.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setCategory(cat)}
@@ -164,7 +167,6 @@ export default function ImposterGame() {
           </div>
         </div>
 
-        {/* Player Count */}
         <div className="mb-4">
           <label className="text-xs font-bold text-slate-500 uppercase mb-3 block tracking-wider">Player Count</label>
           <CounterRow
@@ -175,11 +177,9 @@ export default function ImposterGame() {
           />
         </div>
 
-        {/* Imposter Count */}
         <div className="mb-8">
           <label className="text-xs font-bold text-slate-500 uppercase mb-3 block tracking-wider">
-            Imposters
-            <span className="ml-2 text-slate-600 normal-case font-normal">(max {maxImposters})</span>
+            Imposters <span className="ml-1 text-slate-600 normal-case font-normal">(max {maxImposters})</span>
           </label>
           <CounterRow
             sublabel="Imposters"
@@ -202,7 +202,6 @@ export default function ImposterGame() {
     );
   }
 
-  // 2. PASS & PLAY SCREEN
   if (phase === 'pass') {
     return (
       <Container>
@@ -215,12 +214,13 @@ export default function ImposterGame() {
         </div>
 
         {!showRole ? (
-          <div className="flex flex-col items-center animate-fade-in">
+          <div className="flex flex-col items-center">
             <div className="w-32 h-32 bg-slate-800 rounded-full flex items-center justify-center mb-8 border-4 border-slate-700 shadow-xl">
               <span className="text-5xl">🕵️</span>
             </div>
             <p className="mb-8 text-center text-slate-300">
-              Pass the device to <br /> <span className="text-white font-bold text-xl">Player {currentPlayerIndex + 1}</span>
+              Pass the device to <br />
+              <span className="text-white font-bold text-xl">Player {currentPlayerIndex + 1}</span>
             </p>
             <button
               onClick={() => setShowRole(true)}
@@ -230,23 +230,20 @@ export default function ImposterGame() {
             </button>
           </div>
         ) : (
-          <div className="animate-in fade-in zoom-in duration-300">
-            <div className={`
-              p-8 rounded-2xl mb-8 border text-center relative overflow-hidden group
-              ${roles[currentPlayerIndex] === 'IMPOSTER'
+          <div>
+            <div className={`p-8 rounded-2xl mb-8 border text-center ${
+              roles[currentPlayerIndex] === 'IMPOSTER'
                 ? 'bg-red-950/40 border-red-500/50 shadow-[0_0_30px_rgba(239,68,68,0.2)]'
                 : 'bg-emerald-950/40 border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.2)]'
-              }
-            `}>
+            }`}>
               <p className={`text-xs uppercase tracking-[0.3em] font-bold mb-4 ${roles[currentPlayerIndex] === 'IMPOSTER' ? 'text-red-400' : 'text-emerald-400'}`}>
                 Secret Identity
               </p>
               <h3 className="text-4xl font-black break-words mb-2">
-                {roles[currentPlayerIndex] === 'IMPOSTER' ? (
-                  <span className="text-red-500 drop-shadow-lg">IMPOSTER</span>
-                ) : (
-                  <span className="text-emerald-400 drop-shadow-lg">{roles[currentPlayerIndex]}</span>
-                )}
+                {roles[currentPlayerIndex] === 'IMPOSTER'
+                  ? <span className="text-red-500">IMPOSTER</span>
+                  : <span className="text-emerald-400">{roles[currentPlayerIndex]}</span>
+                }
               </h3>
               {roles[currentPlayerIndex] === 'IMPOSTER' && (
                 <p className="text-red-300/80 text-sm mt-4 font-medium">Blend in. Don't get caught.</p>
@@ -264,24 +261,21 @@ export default function ImposterGame() {
     );
   }
 
-  // 3. PLAYING SCREEN
   if (phase === 'playing' || phase === 'reveal') {
     return (
       <Container>
         <div className="text-center">
           {phase === 'reveal' ? (
-            <div className="mb-8 animate-in zoom-in duration-500">
+            <div className="mb-8">
               <div className="inline-block px-4 py-1 rounded-full bg-slate-800 text-slate-400 text-xs font-bold uppercase tracking-widest mb-4 border border-slate-700">
                 Mission Report
               </div>
               <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700/50">
                 <p className="text-sm text-slate-400 mb-2 font-medium">The Category</p>
-                <p className="text-xl font-bold text-white mb-6">{category}</p>
+                <p className="text-xl font-bold text-white mb-6">{usedCategory}</p>
                 <div className="h-px bg-slate-700 w-full mb-6"></div>
                 <p className="text-sm text-slate-400 mb-2 font-medium">The Secret Word</p>
-                <p className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
-                  {secretWord}
-                </p>
+                <p className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">{secretWord}</p>
                 <div className="h-px bg-slate-700 w-full mt-6 mb-4"></div>
                 <p className="text-sm text-slate-400 mb-3 font-medium">Imposters were</p>
                 <div className="flex flex-wrap gap-2 justify-center">
@@ -300,9 +294,11 @@ export default function ImposterGame() {
               <div className="w-24 h-24 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-slate-700 shadow-xl animate-pulse">
                 <span className="text-4xl">🤔</span>
               </div>
-              <h1 className="text-3xl font-bold text-white mb-3">Who are the Imposters?</h1>
+              <h1 className="text-3xl font-bold text-white mb-3">
+                Who {imposterCount !== 1 ? 'are' : 'is'} the Imposter{imposterCount !== 1 ? 's' : ''}?
+              </h1>
               <p className="text-slate-400 leading-relaxed">
-                Discuss, ask subtle questions, and vote. <br />
+                Discuss, ask subtle questions, and vote.<br />
                 <span className="text-blue-400 font-bold">Civilians</span> know the word.<br />
                 <span className="text-red-500 font-bold">{imposterCount} Imposter{imposterCount !== 1 ? 's' : ''}</span> {imposterCount !== 1 ? 'are' : 'is'} lying.
               </p>
