@@ -47,15 +47,31 @@ export default function ImposterGame() {
     if (imposterCount > max) setImposterCount(max);
   }, [playerCount]);
 
-  const shuffleArray = (array) => {
-    let arr = [...array];
-    let currentIndex = arr.length, randomIndex;
-    while (currentIndex !== 0) {
-      randomIndex = Math.floor(Math.random() * currentIndex);
-      currentIndex--;
-      [arr[currentIndex], arr[randomIndex]] = [arr[randomIndex], arr[currentIndex]];
+  // Crypto-seeded Fisher-Yates — truly uniform, no clustering
+  const secureShuffleArray = (array) => {
+    const arr = [...array];
+    const randomValues = new Uint32Array(arr.length);
+    crypto.getRandomValues(randomValues);
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = randomValues[i] % (i + 1);
+      [arr[i], arr[j]] = [arr[j], arr[i]];
     }
     return arr;
+  };
+
+  // Build roles so imposters start maximally spread, then shuffle
+  const buildRoles = (total, numImposters, word) => {
+    // Place imposters at evenly spaced positions first
+    const arr = Array(total).fill(word);
+    const spacing = Math.floor(total / numImposters);
+    for (let i = 0; i < numImposters; i++) {
+      arr[i * spacing] = 'IMPOSTER';
+    }
+    // Then do multiple shuffle passes for full randomisation
+    let shuffled = secureShuffleArray(arr);
+    shuffled = secureShuffleArray(shuffled);
+    shuffled = secureShuffleArray(shuffled);
+    return shuffled;
   };
 
   const startGame = () => {
@@ -68,9 +84,7 @@ export default function ImposterGame() {
     const word = words[Math.floor(Math.random() * words.length)];
     setSecretWord(word);
     setUsedCategory(resolvedCategory);
-    let newRoles = Array(playerCount - imposterCount).fill(word);
-    for (let i = 0; i < imposterCount; i++) newRoles.push('IMPOSTER');
-    newRoles = shuffleArray(newRoles);
+    const newRoles = buildRoles(playerCount, imposterCount, word);
     setRoles(newRoles);
     setCurrentPlayerIndex(0);
     setShowRole(false);
@@ -129,6 +143,7 @@ export default function ImposterGame() {
     </div>
   );
 
+  // 1. SETUP
   if (phase === 'setup') {
     const cats = Object.keys(gameData);
     return (
@@ -202,6 +217,7 @@ export default function ImposterGame() {
     );
   }
 
+  // 2. PASS & PLAY
   if (phase === 'pass') {
     return (
       <Container>
@@ -261,6 +277,7 @@ export default function ImposterGame() {
     );
   }
 
+  // 3. PLAYING / REVEAL
   if (phase === 'playing' || phase === 'reveal') {
     return (
       <Container>
