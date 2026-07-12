@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Papa from 'papaparse';
+import { Analytics } from "@vercel/analytics/next"
 
 export default function ImposterGame() {
   const [gameData, setGameData] = useState(null);
@@ -343,6 +344,7 @@ export default function ImposterGame() {
             </button>
           </div>
         </div>
+        <Analytics />
       </Container>
     );
   }
