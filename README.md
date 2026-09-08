@@ -8,6 +8,7 @@ A modern, neon-themed "pass and play" social deduction game built with React and
 ## 🎮 How to Play
 
 1. **Setup:** Choose a category (e.g., Animals, Places) and the number of players.
+   - **Custom categories:** Tap **Add Custom Category** to make your own with at least 10 words (one per line or comma separated). It's saved on your device and is also in the pool when **Random Category** is picked.
 2. **Pass the Device:** The game will guide you to pass the device to each player securely.
 3. **Learn Your Role:**
    - **Civilians:** You will see a secret word (e.g., "Pizza").

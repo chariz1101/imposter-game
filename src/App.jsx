@@ -2,6 +2,36 @@ import React, { useState, useEffect } from 'react';
 import Papa from 'papaparse';
 import { Analytics } from "@vercel/analytics/react"
 
+const RANDOM_KEY = '__RANDOM__';
+const MIN_CUSTOM_WORDS = 10;
+const STORAGE_KEY = 'imposter-custom-categories';
+
+// Words may be typed on separate lines or comma separated; duplicates are dropped
+const parseCustomWords = (text) => {
+  const seen = new Map();
+  text.split(/[\n,]/).forEach(raw => {
+    const word = raw.trim();
+    if (word && !seen.has(word.toLowerCase())) seen.set(word.toLowerCase(), word);
+  });
+  return [...seen.values()];
+};
+
+// Only keep entries that still look like a usable category
+const loadCustomCategories = () => {
+  try {
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    const valid = {};
+    Object.entries(stored).forEach(([name, words]) => {
+      if (Array.isArray(words) && words.length >= MIN_CUSTOM_WORDS) {
+        valid[name] = words.map(String);
+      }
+    });
+    return valid;
+  } catch {
+    return {};
+  }
+};
+
 export default function ImposterGame() {
   const [gameData, setGameData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -17,8 +47,15 @@ export default function ImposterGame() {
   const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
   const [showRole, setShowRole] = useState(false);
 
-  const RANDOM_KEY = '__RANDOM__';
+  const [customCategories, setCustomCategories] = useState(loadCustomCategories);
+  const [showCustomForm, setShowCustomForm] = useState(false);
+  const [customName, setCustomName] = useState('');
+  const [customWordsText, setCustomWordsText] = useState('');
+  const [customError, setCustomError] = useState('');
+
   const maxImposters = Math.max(1, Math.floor(playerCount / 3));
+  // Custom categories sit alongside the built-in ones, so Random can pick them too
+  const allCategories = { ...(gameData || {}), ...customCategories };
 
   useEffect(() => {
     fetch('/words.csv')
@@ -42,6 +79,14 @@ export default function ImposterGame() {
         });
       });
   }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(customCategories));
+    } catch {
+      // Storage unavailable (private mode / quota) — categories just won't persist
+    }
+  }, [customCategories]);
 
   useEffect(() => {
     const max = Math.max(1, Math.floor(playerCount / 3));
@@ -76,12 +121,12 @@ export default function ImposterGame() {
   };
 
   const startGame = () => {
-    if (!gameData) return;
-    const cats = Object.keys(gameData);
-    const resolvedCategory = category === RANDOM_KEY
+    const cats = Object.keys(allCategories);
+    if (cats.length === 0) return;
+    const resolvedCategory = category === RANDOM_KEY || !allCategories[category]
       ? cats[Math.floor(Math.random() * cats.length)]
       : category;
-    const words = gameData[resolvedCategory];
+    const words = allCategories[resolvedCategory];
     const word = words[Math.floor(Math.random() * words.length)];
     setSecretWord(word);
     setUsedCategory(resolvedCategory);
@@ -99,6 +144,53 @@ export default function ImposterGame() {
     } else {
       setPhase('playing');
     }
+  };
+
+  const openCustomForm = (name = '') => {
+    setCustomName(name);
+    setCustomWordsText(name && customCategories[name] ? customCategories[name].join('\n') : '');
+    setCustomError('');
+    setShowCustomForm(true);
+  };
+
+  const closeCustomForm = () => {
+    setShowCustomForm(false);
+    setCustomName('');
+    setCustomWordsText('');
+    setCustomError('');
+  };
+
+  const saveCustomCategory = () => {
+    const name = customName.trim();
+    if (!name) {
+      setCustomError('Give your category a name.');
+      return;
+    }
+    const clashesWithBuiltIn = Object.keys(gameData || {})
+      .some(cat => cat.toLowerCase() === name.toLowerCase());
+    if (clashesWithBuiltIn) {
+      setCustomError('A built-in category already uses that name.');
+      return;
+    }
+    const words = parseCustomWords(customWordsText);
+    if (words.length < MIN_CUSTOM_WORDS) {
+      setCustomError(`Add at least ${MIN_CUSTOM_WORDS} words — you have ${words.length}.`);
+      return;
+    }
+    setCustomCategories(prev => ({ ...prev, [name]: words }));
+    setCategory(name);
+    closeCustomForm();
+  };
+
+  const deleteCustomCategory = (name) => {
+    if (!window.confirm(`Delete the "${name}" category?`)) return;
+    setCustomCategories(prev => {
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
+    if (category === name) setCategory(RANDOM_KEY);
+    if (showCustomForm && customName.trim() === name) closeCustomForm();
   };
 
   const resetGame = () => {
@@ -147,6 +239,8 @@ export default function ImposterGame() {
   // 1. SETUP
   if (phase === 'setup') {
     const cats = Object.keys(gameData);
+    const customCats = Object.keys(customCategories);
+    const customWordCount = parseCustomWords(customWordsText).length;
     return (
       <Container>
         <div className="text-center mb-8">
@@ -167,6 +261,28 @@ export default function ImposterGame() {
             >
               🎲 Random Category
             </button>
+            {customCats.map((cat) => (
+              <div key={cat} className="relative">
+                <button
+                  onClick={() => setCategory(cat)}
+                  className={`w-full p-3 pr-7 rounded-xl text-sm font-bold transition-all duration-200 border truncate ${
+                    category === cat
+                      ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.3)]'
+                      : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-800 hover:border-slate-600'
+                  }`}
+                  title={`${cat} · ${customCategories[cat].length} words`}
+                >
+                  {cat}
+                </button>
+                <button
+                  onClick={() => deleteCustomCategory(cat)}
+                  aria-label={`Delete ${cat}`}
+                  className="absolute top-1 right-1 w-6 h-6 flex items-center justify-center rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-950/40 transition-colors"
+                >
+                  <span className="text-sm font-bold leading-none">×</span>
+                </button>
+              </div>
+            ))}
             {cats.map((cat) => (
               <button
                 key={cat}
@@ -181,6 +297,80 @@ export default function ImposterGame() {
               </button>
             ))}
           </div>
+
+          <div className="flex gap-3 mt-3">
+            <button
+              onClick={() => (showCustomForm ? closeCustomForm() : openCustomForm())}
+              className={`flex-1 p-3 rounded-xl text-sm font-bold transition-all duration-200 border border-dashed flex items-center justify-center gap-2 ${
+                showCustomForm
+                  ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300'
+                  : 'bg-slate-800/30 border-slate-700 text-slate-400 hover:bg-slate-800 hover:border-slate-600'
+              }`}
+            >
+              {showCustomForm ? '× Close Custom Category' : '➕ Add Custom Category'}
+            </button>
+            {customCategories[category] && (
+              <button
+                onClick={() => openCustomForm(category)}
+                className="px-4 rounded-xl text-sm font-bold border border-dashed border-slate-700 bg-slate-800/30 text-slate-400 hover:bg-slate-800 hover:border-slate-600 transition-all duration-200"
+              >
+                ✏️ Edit
+              </button>
+            )}
+          </div>
+
+          {customCats.length > 0 && (
+            <p className="text-[11px] text-slate-600 mt-2 text-center">
+              🎲 Random also picks from your custom categories.
+            </p>
+          )}
+
+          {showCustomForm && (
+            <div className="mt-4 bg-slate-950/50 border border-slate-800 rounded-2xl p-4">
+              <label className="text-xs font-bold text-slate-500 uppercase mb-2 block tracking-wider">Category Name</label>
+              <input
+                type="text"
+                value={customName}
+                onChange={(e) => { setCustomName(e.target.value); setCustomError(''); }}
+                placeholder="e.g. Our Classmates"
+                className="w-full mb-4 px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
+              />
+
+              <label className="text-xs font-bold text-slate-500 uppercase mb-2 block tracking-wider">
+                Words <span className="ml-1 text-slate-600 normal-case font-normal">(min {MIN_CUSTOM_WORDS})</span>
+              </label>
+              <textarea
+                value={customWordsText}
+                onChange={(e) => { setCustomWordsText(e.target.value); setCustomError(''); }}
+                rows={5}
+                placeholder={'One word per line, or separated by commas'}
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-colors resize-none"
+              />
+              <p className={`text-[11px] mt-2 font-bold ${customWordCount >= MIN_CUSTOM_WORDS ? 'text-emerald-400' : 'text-slate-500'}`}>
+                {customWordCount} / {MIN_CUSTOM_WORDS} words
+              </p>
+
+              {customError && (
+                <p className="text-[11px] text-red-400 mt-2 font-medium">{customError}</p>
+              )}
+
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={closeCustomForm}
+                  className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-bold transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveCustomCategory}
+                  disabled={customWordCount < MIN_CUSTOM_WORDS || !customName.trim()}
+                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-600 disabled:cursor-not-allowed text-white rounded-xl text-sm font-bold transition-colors"
+                >
+                  {customCategories[customName.trim()] ? 'Update Category' : 'Save Category'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="mb-4">
